@@ -107,6 +107,12 @@ protected:
                 .required(false)
                 .repeatable(false)
                 .callback(OptionCallback<HTTPWebServer>(this, &HTTPWebServer::handleInitDB)));
+        options.addOption(
+            Option("cache_servers", "cs", "set ignite cache servers")
+                .required(false)
+                .repeatable(false)
+                .argument("value")
+                .callback(OptionCallback<HTTPWebServer>(this, &HTTPWebServer::handleCacheServers)));
         
     }
 
@@ -147,6 +153,13 @@ protected:
     {
         std::cout << "host:" << value << std::endl;
         Config::get().host() = value;
+    }
+
+    void handleCacheServers([[maybe_unused]] const std::string &name,
+                       [[maybe_unused]] const std::string &value)
+    {
+        std::cout << "cache servers:" << value << std::endl;
+        Config::get().cache_servers() = value;
     }
 
 

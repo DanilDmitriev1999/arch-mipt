@@ -50,9 +50,9 @@ class PersonHandler : public HTTPRequestHandler
 private:
     bool check_name(const std::string &name, std::string &reason)
     {
-        if (name.length() < 3)
+        if (name.length() < 2)
         {
-            reason = "Name must be at leas 3 signs";
+            reason = "Name must be at least 3 signs";
             return false;
         }
 
@@ -71,21 +71,22 @@ private:
         return true;
     };
 
-    bool check_login(const std::string &email, std::string &reason)
+    bool check_login(const std::string &login, std::string &reason)
     {
-        if (email.find('@') == std::string::npos)
+         if (login.length() < 3)
         {
-            reason = "Login must contain @";
+            reason = "Login must be at least 3 signs";
+            std::cout << "1 case" << std::endl;
             return false;
         }
-
-        if (email.find(' ') != std::string::npos)
+        
+        if (login.find(' ') != std::string::npos)
         {
             reason = "Login can't contain spaces";
             return false;
         }
 
-        if (email.find('\t') != std::string::npos)
+        if (login.find('\t') != std::string::npos)
         {
             reason = "Login can't contain spaces";
             return false;
@@ -93,22 +94,6 @@ private:
 
         return true;
     };
-
-    bool check_age(const int &age, std::string &reason)
-    {
-        if (age <= 18)
-        {
-            reason = "You're too small for my service";
-            return false;
-        }
-        
-        if (age >= 110)
-        {
-            reason = "You're too old for my service";
-            return false;
-        }
-        return true;
-    }
 
 public:
     PersonHandler(const std::string &format) : _format(format)
@@ -165,9 +150,9 @@ public:
                         if (form.has("age"))
                         {
                             database::Person person;
-                            person.login() = form.get("login");
                             person.first_name() = form.get("first_name");
                             person.last_name() = form.get("last_name");
+                            person.login() = form.get("login");
                             person.age() = atoi(form.get("age").c_str());
 
                             bool check_result = true;
@@ -193,22 +178,24 @@ public:
                                 check_result = false;
                                 message += reason;
                                 message += "<br>";
-                            }
-
-                            if (!check_age(person.get_age(), reason))
-                            {
-                                check_result = false;
-                                message += reason;
-                                message += "<br>";
-                            }
+                            }    
 
                             if (check_result)
                             {
                                 try
-                                {
-                                    person.save_to_mysql();
-                                    ostr << "{ \"result\": true }";
-                                    return;
+                                {   
+                                    try
+                                    {
+                                        database::Person result = database::Person::read_by_login(person.login());
+                                        ostr << "User with login " << person.login() << " already exists";
+                                        return;
+                                    }
+                                    catch (...)
+                                    {
+                                        person.send_to_queue();
+                                        ostr << "{ \"result\": true }";
+                                        return;
+                                    }
                                 }
                                 catch (...)
                                 {
@@ -221,15 +208,8 @@ public:
                                 ostr << "{ \"result\": false , \"reason\": \"" << message << "\" }";
                                 return;
                             }
-                            ostr << "Error request";
                         }
         }
-
-        auto results = database::Person::read_all();
-        Poco::JSON::Array arr;
-        for (auto s : results)
-            arr.add(s.toJSON());
-        Poco::JSON::Stringifier::stringify(arr, ostr);
     }
 
 private:
